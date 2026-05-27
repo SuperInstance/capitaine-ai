@@ -1,62 +1,158 @@
 # Capitaine.ai
 
-> Premium education platform and advanced agent capabilities. Preloaded cold on every Deckboss unit. Unlock when ready.
+> AI captain orchestration — coordinate agent crews with task delegation and progress tracking.
 
 **Part of the Lucineer ecosystem.**
 
+## Install
 
+```bash
+pip install capitaine-ai
+```
 
-## What is Capitaine?
+## Quick Start
 
-Capitaine is the premium layer of the Lucineer ecosystem. It ships cold (pre-installed but inactive) on every Deckboss hardware unit. When a technician or developer is ready for advanced capabilities, they unlock Capitaine.
+```python
+from capitaine_ai import Agent, Captain, Task, TaskPriority
 
-## Capitaine Provides
+# Create a captain
+captain = Captain(name="Hook")
 
-### Advanced Agent Capabilities
-- **Multi-model orchestration** — Run reasoning, coding, and creative models simultaneously
-- **Fleet coordination** — Manage multiple git-agents from one interface
-- **Reverse Actualization** — Long-range planning and ideation across time horizons
-- **Deep research** — Multi-round analysis with cross-model synthesis
+# Register agents with skills
+captain.crew.register(Agent(name="Alice", skills=["python", "testing"]))
+captain.crew.register(Agent(name="Bob", skills=["rust", "systems"]))
+captain.crew.register(Agent(name="Carol", skills=["python", "docs"]))
 
-### Education Platform
-- **Token-based courses** — Generate fresh educational content with tokens
-- **Shared curriculum** — Community-created courses are free for everyone
-- **Certification tracks** — Technician, Journeyman, Master, Designer
-- **Hands-on labs** — Each course comes with a git-agent to practice on
+# Add tasks with skill requirements and dependencies
+write_code = captain.add_task(
+    Task(name="Write API module", required_skills=["python"], priority=TaskPriority.HIGH)
+)
+write_tests = captain.add_task(
+    Task(name="Write tests", required_skills=["testing"], dependencies=[write_code.id])
+)
+write_docs = captain.add_task(
+    Task(name="Write documentation", required_skills=["docs"], dependencies=[write_code.id])
+)
 
-### The Training Port Model
-Technician-teaches-technician. A Master in Alaska trains two Apprentices. They train two more. The knowledge tree grows through git repos, not classrooms.
+# Run orchestration
+result = captain.run()
+print(result)
+# {'total': 3, 'completed': 3, 'failed': 0, 'in_progress': 0, 'pending': 0, ...}
+```
 
-## Capitaine on Deckboss Hardware
+## Core Concepts
 
+### Agent
 
+An agent has skills, availability status, and a concurrency limit:
 
-## Equipment, Skills, Context
+```python
+from capitaine_ai import Agent
 
-Like every agent in the ecosystem, Capitaine agents have three resource types:
+agent = Agent(
+    name="Alice",
+    skills=["python", "testing", "docker"],
+    max_concurrent_tasks=3,
+)
+print(agent.is_available)       # True
+print(agent.has_skills(["python", "testing"]))  # True
+```
 
-- **Equipment** — Perceives through: cameras, sensors, APIs, file systems, cloud services
-- **Skills** — Thinks with: reasoning patterns, domain expertise, creative frameworks
-- **Context** — Knows: conversation history, project state, accumulated knowledge
+### Crew
 
-Capitaine adds advanced skill cartridges that go beyond the base Deckboss set.
+A crew is a named collection of agents:
 
-## From Deckboss to Capitaine
+```python
+from capitaine_ai import Crew, Agent
 
+crew = Crew(name="engineering")
+crew.register(Agent(name="Alice", skills=["python"]))
+crew.register(Agent(name="Bob", skills=["rust"]))
 
+# Find available agents with specific skills
+candidates = crew.find_available_with_skills(["python"])
+```
 
-## Coming Soon
+### Task
 
-- Multi-agent swarm sessions
-- Visual system simulation for client presentations
-- Certification program with reputation scores
-- Enterprise training packages
+Tasks have a full lifecycle — pending → ready → assigned → running → completed/failed:
+
+```python
+from capitaine_ai import Task, TaskPriority
+
+task = Task(
+    name="Deploy to production",
+    required_skills=["devops"],
+    priority=TaskPriority.CRITICAL,
+    dependencies=["task-id-abc"],
+)
+
+task.mark_ready()
+task.assign("agent-id")
+task.start()
+task.complete(result={"deployed_to": "prod-us-east"})
+```
+
+### Captain
+
+The captain orchestrates everything — resolving dependencies, delegating to the best agent, and tracking progress:
+
+```python
+from capitaine_ai import Captain, Agent, Task
+
+captain = Captain(name="Hook")
+captain.crew.register(Agent(name="Dev", skills=["python"]))
+captain.add_task(Task(name="Build feature", required_skills=["python"]))
+
+# Orchestrate
+result = captain.run()
+
+# Check progress anytime
+print(captain.progress)
+```
+
+### Progress Tracking & Milestones
+
+```python
+from capitaine_ai import Captain, Agent, Task
+from capitaine_ai.progress import Milestone
+
+captain = Captain(name="Hook")
+captain.crew.register(Agent(name="Worker", skills=["python"]))
+
+t1 = captain.add_task(Task(name="Phase 1 work", required_skills=["python"]))
+t2 = captain.add_task(Task(name="Phase 2 work", required_skills=["python"]))
+
+milestone = captain.add_milestone("MVP", [t1.id, t2.id], "Minimum viable product")
+
+captain.run()
+
+print(captain.tracker.milestone_complete(milestone))  # True
+print(captain.tracker.milestone_progress(milestone))  # 100.0
+
+# Bottleneck detection
+print(captain.tracker.find_bottlenecks())
+```
+
+## Architecture
+
+```
+capitaine_ai/
+├── __init__.py        # Public API
+├── captain.py         # Captain — top-level orchestrator
+├── crew.py            # Crew & Agent — registration, skills, availability
+├── task.py            # Task — lifecycle, dependencies, priority
+├── delegation.py      # DelegationEngine — task-to-agent matching
+└── progress.py        # ProgressTracker — milestones, ETA, bottlenecks
+```
+
+### Design Principles
+
+- **Zero external dependencies** — only stdlib + pytest for testing
+- **Dataclasses throughout** — clean, typed, no magic
+- **Composable** — use individual components or the full Captain orchestrator
+- **Synchronous core** — easy to understand, easy to wrap in async
 
 ## License
 
-Core platform: MIT
-Premium content: varies by creator
-
----
-
-Built by [Superinstance](https://github.com/superinstance) & [Lucineer](https://github.com/Lucineer) (DiGennaro et al.)
+MIT
